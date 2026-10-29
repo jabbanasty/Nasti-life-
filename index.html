@@ -27,6 +27,37 @@ async function enableNotifications(){
   status.textContent='Notifica di prova inviata. Gli avvisi programmati non sono ancora configurati.';
  }catch(e){status.textContent='Non sono riuscito a mostrare la notifica: '+e.message}
 }
+// Pulsanti di inserimento collegati anche tramite listener espliciti (più affidabili su iOS).
+function wireAddButton(selector, fn, inputId, label){
+ const btn=document.querySelector(selector);
+ if(!btn)return;
+ btn.removeAttribute('onclick');
+ btn.addEventListener('click',function(ev){
+  ev.preventDefault();
+  const field=$(inputId);
+  if(field && !field.value.trim()){
+   field.focus();
+   const old=field.placeholder;
+   field.placeholder='Scrivi '+label+' qui…';
+   field.style.borderColor='var(--gold)';
+   setTimeout(()=>{field.placeholder=old;field.style.borderColor=''},2200);
+   return;
+  }
+  try{fn()}catch(err){console.error(err);const e=$('appError');if(e){e.style.display='block';e.textContent='Non sono riuscito ad aggiungere: '+(err.message||String(err))}}
+ });
+}
+wireAddButton('button[onclick="addTask()"]',addTask,'taskName','un impegno');
+wireAddButton('button[onclick="addAgenda()"]',addAgenda,'agendaText','un impegno');
+wireAddButton('button[onclick="addMeal()"]',addMeal,'mealName','un pasto');
+wireAddButton('button[onclick="addExercise()"]',addExercise,'exerciseName','un esercizio');
+wireAddButton('button[onclick="addDogTask()"]',addDogTask,'dogTask','un promemoria');
+wireAddButton('button[onclick="addShop()"]',addShop,'shopName','un prodotto');
+['taskName','agendaText','mealName','exerciseName','dogTask','shopName'].forEach(inputId=>{
+ const field=$(inputId);
+ if(field)field.addEventListener('keydown',ev=>{
+  if(ev.key==='Enter'){ev.preventDefault();const map={taskName:'addTask',agendaText:'addAgenda',mealName:'addMeal',exerciseName:'addExercise',dogTask:'addDogTask',shopName:'addShop'};window[map[inputId]]()}
+ });
+});
 // Espone esplicitamente le azioni ai pulsanti su Safari/iPad.
 Object.assign(window,{addTask,addAgenda,addMeal,addExercise,addDogTask,addShop,saveWeight,showView,toggleItem,delItem,enableNotifications});
 if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const reg=await navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'});await reg.update()}catch(e){console.warn('Aggiornamento app:',e)}})}
