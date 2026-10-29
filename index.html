@@ -27,5 +27,7 @@ async function enableNotifications(){
   status.textContent='Notifica di prova inviata. Gli avvisi programmati non sono ancora configurati.';
  }catch(e){status.textContent='Non sono riuscito a mostrare la notifica: '+e.message}
 }
-if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}))}
+// Espone esplicitamente le azioni ai pulsanti su Safari/iPad.
+Object.assign(window,{addTask,addAgenda,addMeal,addExercise,addDogTask,addShop,saveWeight,showView,toggleItem,delItem,enableNotifications});
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const reg=await navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'});await reg.update()}catch(e){console.warn('Aggiornamento app:',e)}})}
 </script></body></html>
