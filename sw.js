@@ -1,28 +1,29 @@
-const CACHE_NAME = 'nasti-life-v3';
-const APP_FILES = ['./', './index.html', './manifest.json', './icon.svg'];
+const CACHE_NAME = 'nasti-life-v4';
+const APP_FILES = ['./manifest.json', './icon.svg'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_FILES)).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim()));
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('nasti-life-') && key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim()));
 });
 self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET' || new URL(event.request.url).origin !== self.location.origin) return;
-  event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {
-    const copy = response.clone();
-    if (response.ok) caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+  const req = event.request;
+  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  // HTML always network-first: don't let a stale cached index.html hide fixes.
+  if (req.mode === 'navigate' || req.destination === 'document' || new URL(req.url).pathname.endsWith('.html')) {
+    event.respondWith(fetch(req).catch(() => caches.match(req).then(cached => cached || caches.match('./index.html'))));
+    return;
+  }
+  event.respondWith(caches.match(req).then(cached => cached || fetch(req).then(response => {
+    if (response.ok) caches.open(CACHE_NAME).then(cache => cache.put(req, response.clone()));
     return response;
   })));
 });
 self.addEventListener('push', event => {
   let data = { title: 'NASTI LIFE', body: 'Hai un promemoria in programma.', url: './' };
-  try { if (event.data) data = { ...data, ...event.data.json() }; } catch (_) {
-    if (event.data) data.body = event.data.text();
-  }
+  try { if (event.data) data = { ...data, ...event.data.json() }; } catch (_) { if (event.data) data.body = event.data.text(); }
   event.waitUntil(self.registration.showNotification(data.title || 'NASTI LIFE', {
-    body: data.body || 'Hai un promemoria in programma.',
-    icon: './icon.svg',
-    badge: './icon.svg',
+    body: data.body || 'Hai un promemoria in programma.', icon: './icon.svg', badge: './icon.svg',
     data: { url: data.url || './' }
   }));
 });
